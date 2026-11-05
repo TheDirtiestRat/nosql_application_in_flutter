@@ -3,16 +3,38 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CouchDBService {
-  final String baseUrl = 'http://127.0.0.1:5984';
-  final String database = 'nosql_db';
-  final String username = 'admin';
-  final String password = 'admin';
+  Uri? _databaseUri;
+  String? _username;
+  String? _password;
 
-  Map<String, String> get headers => {
-    'Content-Type': 'application/json',
-    'Authorization':
-        'Basic ${base64Encode(utf8.encode('$username:$password'))}',
-  };
+  Map<String, String> get headers {
+    final username = _username;
+    final password = _password;
+    if (username == null || password == null) {
+      throw StateError('Connect to CouchDB before making database requests.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization':
+          'Basic ${base64Encode(utf8.encode('$username:$password'))}',
+    };
+  }
+
+  Uri _uriFor(
+    List<String> pathSegments, {
+    Map<String, String>? queryParameters,
+  }) {
+    final databaseUri = _databaseUri;
+    if (databaseUri == null) {
+      throw StateError('Connect to CouchDB before making database requests.');
+    }
+
+    return databaseUri.replace(
+      pathSegments: [...databaseUri.pathSegments, ...pathSegments],
+      queryParameters: queryParameters,
+    );
+  }
 
   //to be used in the system
   Future<void> connect({
@@ -22,10 +44,23 @@ class CouchDBService {
     required String password,
   }) async {
     final serverUri = Uri.parse(baseUrl.trim());
-    final cleanPath = serverUri.path.replaceFirst(RegExp(r'/$'), '');
+    final databaseName = database.trim();
+    if ((serverUri.scheme != 'http' && serverUri.scheme != 'https') ||
+        serverUri.host.isEmpty ||
+        serverUri.hasQuery ||
+        serverUri.hasFragment ||
+        databaseName.isEmpty) {
+      throw ArgumentError(
+        'Enter a valid HTTP or HTTPS base URL and a database name. '
+        'The URL must not include a query or fragment.',
+      );
+    }
 
     final databaseUri = serverUri.replace(
-      path: '$cleanPath/${Uri.encodeComponent(database.trim())}',
+      pathSegments: [
+        ...serverUri.pathSegments.where((segment) => segment.isNotEmpty),
+        databaseName,
+      ],
     );
 
     final credentials = base64Encode(utf8.encode('$username:$password'));
@@ -46,6 +81,10 @@ class CouchDBService {
         'Check the server URL, database name, and login.',
       );
     }
+
+    _databaseUri = databaseUri;
+    _username = username;
+    _password = password;
   }
 
   Future<void> savePerson(Map<String, dynamic> person) async {
@@ -53,9 +92,7 @@ class CouchDBService {
 
     // Existing documents need PUT to their document URL.
     // New documents use POST to the database URL.
-    final url = id == null
-        ? Uri.parse('$baseUrl/$database')
-        : Uri.parse('$baseUrl/$database/${Uri.encodeComponent(id)}');
+    final url = id == null ? _uriFor([]) : _uriFor([id]);
 
     final response = id == null
         ? await http.post(
@@ -85,7 +122,10 @@ class CouchDBService {
   }
 
   Future<List<Map<String, dynamic>>> getRecord({String search = ''}) async {
-    final url = Uri.parse('$baseUrl/$database/_all_docs?include_docs=true');
+    final url = _uriFor(
+      ['_all_docs'],
+      queryParameters: {'include_docs': 'true'},
+    );
 
     final response = await http.get(url, headers: headers);
 
@@ -119,7 +159,7 @@ class CouchDBService {
   }
 
   Future<void> findRecord(String search) async {
-    final url = Uri.parse('$baseUrl/$database/_find');
+    final url = _uriFor(['_find']);
 
     /* Possible queries
     Operator	Meaning
@@ -167,7 +207,7 @@ class CouchDBService {
 
   Future<void> updateRecord(String id, String new_firstName) async {
     //step 1
-    final getUrl = Uri.parse('$baseUrl/$database/$id');
+    final getUrl = _uriFor([id]);
 
     final getResponse = await http.get(getUrl, headers: headers);
 
@@ -182,7 +222,7 @@ class CouchDBService {
     person['first_name'] = new_firstName;
 
     //step 3
-    final putUrl = Uri.parse('$baseUrl/$database/$id');
+    final putUrl = _uriFor([id]);
 
     final putResponse = await http.put(
       putUrl,
@@ -194,9 +234,7 @@ class CouchDBService {
   }
 
   Future<void> deleteRecord({required String id, required String rev}) async {
-    final documentUri = Uri.parse(
-      '$baseUrl/$database/${Uri.encodeComponent(id)}',
-    ).replace(queryParameters: {'rev': rev});
+    final documentUri = _uriFor([id], queryParameters: {'rev': rev});
 
     final response = await http.delete(documentUri, headers: headers);
 
