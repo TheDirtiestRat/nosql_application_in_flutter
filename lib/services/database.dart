@@ -121,7 +121,7 @@ class NoSQLService {
     }
   }
 
-  Future<void> updateRecord(String id, String new_firstName) async {
+  Future<void> updateRecord(String id, String newFirstname) async {
     //step 1
     final getUrl = Uri.parse('$baseUrl/$database/$id');
 
@@ -135,7 +135,7 @@ class NoSQLService {
     //step 2
     final person = jsonDecode(getResponse.body);
     // I can add more attributes to update
-    person['first_name'] = new_firstName;
+    person['first_name'] = newFirstname;
 
     //step 3
     final putUrl = Uri.parse('$baseUrl/$database/$id');

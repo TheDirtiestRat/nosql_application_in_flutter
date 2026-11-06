@@ -205,7 +205,7 @@ class CouchDBService {
     }
   }
 
-  Future<void> updateRecord(String id, String new_firstName) async {
+  Future<void> updateRecord(String id, String newFirstname) async {
     //step 1
     final getUrl = _uriFor([id]);
 
@@ -219,7 +219,7 @@ class CouchDBService {
     //step 2
     final person = jsonDecode(getResponse.body);
     // I can add more attributes to update
-    person['first_name'] = new_firstName;
+    person['first_name'] = newFirstname;
 
     //step 3
     final putUrl = _uriFor([id]);
