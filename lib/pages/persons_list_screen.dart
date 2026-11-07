@@ -57,9 +57,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
     }
   }
 
-  Future<void> _confirmAndDeletePerson(
-    Map<String, dynamic> person,
-  ) async {
+  Future<void> _confirmAndDeletePerson(Map<String, dynamic> person) async {
     final id = person['_id']?.toString();
     final rev = person['_rev']?.toString();
     final firstName = person['first_name']?.toString() ?? '';
@@ -69,7 +67,9 @@ class _PeopleScreenState extends State<PeopleScreen> {
     if (id == null || rev == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cannot delete this record: CouchDB ID or revision is missing.'),
+          content: Text(
+            'Cannot delete this record: CouchDB ID or revision is missing.',
+          ),
         ),
       );
       return;
@@ -110,9 +110,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${name.isEmpty ? 'Person' : name} deleted'),
-        ),
+        SnackBar(content: Text('${name.isEmpty ? 'Person' : name} deleted')),
       );
 
       await _loadPeople(search: searchController.text.trim());
@@ -131,36 +129,62 @@ class _PeopleScreenState extends State<PeopleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('People')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: searchController,
-              onChanged: (value) => _loadPeople(search: value.trim()),
-              decoration: InputDecoration(
-                hintText: 'Search by first or last name',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      appBar: AppBar(title: const Text('People'), centerTitle: true),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha((0.06 * 255).round()),
+                      blurRadius: 14,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
+                child: TextField(
+                  controller: searchController,
+                  onChanged: (value) => _loadPeople(search: value.trim()),
+                  decoration: InputDecoration(
+                    hintText: 'Search by first or last name',
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(child: _buildPeopleList()),
-          ],
+              const SizedBox(height: 16),
+              Expanded(child: _buildPeopleList()),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -168,9 +192,8 @@ class _PeopleScreenState extends State<PeopleScreen> {
           final saved = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
-              builder: (_) => RecordPersonScreen(
-                couchDbService: widget.couchDbService,
-              ),
+              builder: (_) =>
+                  RecordPersonScreen(couchDbService: widget.couchDbService),
             ),
           );
 
@@ -178,7 +201,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
             _loadPeople(search: searchController.text.trim());
           }
         },
-        icon: const Icon(Icons.person_add),
+        icon: const Icon(Icons.person_add_rounded),
         label: const Text('Add Person'),
       ),
     );
@@ -194,6 +217,8 @@ class _PeopleScreenState extends State<PeopleScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const Icon(Icons.error_outline_rounded, size: 40),
+            const SizedBox(height: 12),
             Text(errorMessage!),
             const SizedBox(height: 12),
             FilledButton(
@@ -207,7 +232,9 @@ class _PeopleScreenState extends State<PeopleScreen> {
     }
 
     if (people.isEmpty) {
-      return const Center(child: Text('No people found.'));
+      return const Center(
+        child: Text('No people found. Try adding a new record.'),
+      );
     }
 
     return ListView.builder(
@@ -220,56 +247,99 @@ class _PeopleScreenState extends State<PeopleScreen> {
         final fullName = '$firstName $lastName'.trim();
         final isDeleting = id != null && _deletingIds.contains(id);
 
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
+          decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha((0.04 * 255).round()),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.only(
-              left: 16,
-              top: 8,
-              bottom: 8,
-              right: 4,
-            ),
-            leading: CircleAvatar(
-              child: Text(firstName.isEmpty ? '?' : firstName[0].toUpperCase()),
-            ),
-            title: Text(fullName.isEmpty ? 'Unnamed person' : fullName),
-            subtitle: Text(
-              'Age: ${person['age'] ?? '—'}'
-              '  •  Year born: ${person['year_born'] ?? '—'}',
-            ),
-            trailing: isDeleting
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () async {
+                final saved = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RecordPersonScreen(
+                      couchDbService: widget.couchDbService,
+                      person: person,
                     ),
-                  )
-                : IconButton(
-                    tooltip: 'Delete person',
-                    icon: const Icon(Icons.delete_outline),
-                    color: Theme.of(context).colorScheme.error,
-                    onPressed: () => _confirmAndDeletePerson(person),
                   ),
-            onTap: () async {
-              final saved = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => RecordPersonScreen(
-                    couchDbService: widget.couchDbService,
-                    person: person,
-                  ),
-                ),
-              );
+                );
 
-              if (saved == true && mounted) {
-                _loadPeople(search: searchController.text.trim());
-              }
-            },
+                if (saved == true && mounted) {
+                  _loadPeople(search: searchController.text.trim());
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer,
+                      child: Text(
+                        firstName.isEmpty ? '?' : firstName[0].toUpperCase(),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fullName.isEmpty ? 'Unnamed person' : fullName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Age: ${person['age'] ?? '?'} ? Year born: ${person['year_born'] ?? '?'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    isDeleting
+                        ? const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : IconButton(
+                            tooltip: 'Delete person',
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            onPressed: () => _confirmAndDeletePerson(person),
+                          ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
